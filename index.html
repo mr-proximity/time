@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Zone Time Converter & Sync</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brandEU: {
+                            light: '#38bdf8',
+                            DEFAULT: '#0284c7',
+                            dark: '#0369a1',
+                            bg: 'rgba(14, 165, 233, 0.08)'
+                        },
+                        brandLijah: {
+                            light: '#a855f7',
+                            DEFAULT: '#7e22ce',
+                            dark: '#6b21a8',
+                            bg: 'rgba(168, 85, 247, 0.08)'
+                        },
+                        brandProxy: {
+                            light: '#10b981',
+                            DEFAULT: '#059669',
+                            dark: '#047857',
+                            bg: 'rgba(16, 185, 129, 0.08)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0b0f19;
+            color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+            background-image: 
+                radial-gradient(at 10% 10%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
+                radial-gradient(at 90% 10%, rgba(168, 85, 247, 0.08) 0px, transparent 50%),
+                radial-gradient(at 50% 90%, rgba(16, 185, 129, 0.08) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        .glass-card {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Custom Dark Form Controls */
+        input[type="date"], select {
+            color-scheme: dark;
+        }
+
+        .glow-eu { box-shadow: 0 0 25px -5px rgba(14, 165, 233, 0.25); }
+        .glow-lijah { box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.25); }
+        .glow-proxy { box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25); }
+
+        /* Pulse live dot animation */
+        @keyframes pulse-live {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+        .animate-live {
+            animation: pulse-live 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-4 sm:p-6 md:p-10">
+
+    <div class="max-w-6xl mx-auto w-full">
+        
+        <!-- Header Bar -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 border-b border-slate-800 pb-6">
+            <div>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white">Time Zone Sync</h1>
+                        <p class="text-xs sm:text-sm text-slate-400">Live time sync & auto-converter across key locations</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Live Status Toggle Button -->
+                <button id="liveToggleBtn" onclick="toggleLiveSync()" class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20">
+                    <span id="liveIndicatorDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-live"></span>
+                    <span id="liveToggleText">Live Clock Active</span>
+                </button>
+
+                <!-- Reset to Live Button -->
+                <button onclick="resetToNow()" class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-300 bg-slate-800/80 border border-slate-700/80 hover:bg-slate-700 hover:text-white transition-all duration-200" title="Reset to current time">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>Reset Now</span>
+                </button>
+
+                <!-- Copy All Button -->
+                <button onclick="copyAllTimes()" class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-95">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <span>Copy All 3 Times</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Options Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-4 bg-slate-900/60 p-3.5 rounded-2xl border border-slate-800 mb-8 text-sm text-slate-400">
+            <div class="flex items-center gap-4">
+                <span class="text-xs uppercase font-semibold text-slate-500 tracking-wider">Copy Format Settings:</span>
+                
+                <label class="inline-flex items-center gap-2 cursor-pointer select-none hover:text-slate-200 transition">
+                    <input type="checkbox" id="includeDateToggle" onchange="toggleIncludeDate(this.checked)" class="w-4 h-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900 bg-slate-800">
+                    <span>Include Date in Copy</span>
+                </label>
+
+                <label class="inline-flex items-center gap-2 cursor-pointer select-none hover:text-slate-200 transition">
+                    <input type="checkbox" id="lowercaseAmPmToggle" checked onchange="toggleLowercaseAmPm(this.checked)" class="w-4 h-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900 bg-slate-800">
+                    <span>Lowercase am/pm</span>
+                </label>
+            </div>
+
+            <div class="text-xs text-slate-500 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Type in any box to recalculate all 3 timezones dynamically</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- CARD 1: EU time -->
+            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 relative overflow-hidden group border-t-2 border-t-sky-500/80">
+                <div class="absolute -right-12 -top-12 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl group-hover:bg-sky-500/20 transition-all pointer-events-none"></div>
+
+                <div>
+                    <!-- Card Top Header -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-sky-400"></span>
+                            <h2 class="text-xl font-bold text-white tracking-wide">EU time</h2>
+                        </div>
+                        <span id="offset-eu" class="text-xs font-mono px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/20">
+                            GMT
+                        </span>
+                    </div>
+
+                    <!-- Primary Clock Display -->
+                    <div class="my-4 text-center py-4 bg-slate-950/40 rounded-xl border border-slate-800/80">
+                        <div id="display-time-eu" class="text-4xl sm:text-5xl font-extrabold font-mono text-white tracking-tight">
+                            00:00:00 <span class="text-xl text-sky-400 font-sans">AM</span>
+                        </div>
+                        <div id="display-date-eu" class="text-xs sm:text-sm text-slate-400 font-medium mt-1">
+                            Loading date...
+                        </div>
+                    </div>
+
+                    <!-- Interactive Converter Controls -->
+                    <div class="space-y-3 mt-6">
+                        <label class="block text-xs font-semibold uppercase text-slate-400 tracking-wider">Set Custom Time / Date</label>
+                        
+                        <!-- Date Input -->
+                        <div>
+                            <input type="date" id="input-date-eu" onchange="handleInputChange('eu')" 
+                                class="w-full bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition">
+                        </div>
+
+                        <!-- Time Selector Group -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <!-- Hours -->
+                            <select id="input-hour-eu" onchange="handleInputChange('eu')" 
+                                class="bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl px-2 py-2 text-sm text-center font-mono focus:outline-none focus:border-sky-500">
+                            </select>
+                            
+                            <!-- Minutes -->
+                            <select id="input-min-eu" onchange="handleInputChange('eu')" 
+                                class="bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl px-2 py-2 text-sm text-center font-mono focus:outline-none focus:border-sky-500">
+                            </select>
+
+                            <!-- AM/PM -->
+                            <select id="input-ampm-eu" onchange="handleInputChange('eu')" 
+                                class="bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl px-2 py-2 text-sm text-center font-semibold text-sky-400 focus:outline-none focus:border-sky-500">
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                        </div>
+
+                        <!-- Quick Increment Chips -->
+                        <div class="flex items-center justify-between gap-1 pt-1">
+                            <button onclick="adjustTime('eu', -60)" class="flex-1 py-1 px-1.5 text-xs font-mono bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-lg transition">-1h</button>
+                            <button onclick="adjustTime('eu', -15)" class="flex-1 py-1 px-1.5 text-xs font-mono bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-lg transition">-15m</button>
+                            <button onclick="adjustTime('eu', 15)" class="flex-1 py-1 px-1.5 text-xs font-mono bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-lg transition">+15m</button>
+                            <button onclick="adjustTime('eu', 60)" class="flex-1 py-1 px-1.5 text-xs font-mono bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-lg transition">+1h</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Copyable Field Section -->
+                <div class="mt-6 pt-4 border-t border-slate-800/80">
+                    <label class="block text-xs font-medium text-slate-400 mb-1.5">Formatted Output String:</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" readonly id="copy-preview-eu" value="4:00 pm (EU time)"
+                            class="w-full bg-slate-950/80 text-sky-300 font-mono text-sm px-3 py-2 rounded-xl border border-slate-800 select-all focus:outline-none">
+                        <button onclick="copySingleBox('eu')" class="px-3.5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5 shrink-0 shadow-lg shadow-sky-600/20 transition active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARD 2: Lijah and others' Time -->
+            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 relative overflow-hidden group border-t-2 border-t-purple-500/80">
+                <div class="absolute -right-12 -top-12 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all pointer-events-none"></div>
+
+                <div>
+                    <!-- Card Top Header -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-purple-400"></span>
+                            <h2 class="text-xl font-bold text-white tracking-wide">Lijah and others' Time</h2>
+                        </div>
+                        <span id="offset-lijah" class="text-xs font-mono px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                            EDT
+                        </span>
+                    </div>
+
+                    <!-- Primary Clock Display -->
+                    <div class="my-4 text-center py-4 bg-slate-950/40 rounded-xl border border-slate-800/80">
+                        <div id="display-time-lijah" class="text-4xl sm:text-5xl font-extrabold font-mono text-white tracking-tight">
+                            00:00:00 <span class="text-xl text-purple-400 font-sans">AM</span>
+                        </div>
+                        <div id="display-date-lijah" class="text-xs sm:text-sm text-slate-400 font-medium mt-1">
+                            Loading date...
+                        </div>
+                    </div>
+
+                    <!-- Interactive Converter Controls -->
+                    <div class="space-y-3 mt-6">
+                        <label class="block text-xs font-semibold uppercase text-slate-400 tracking-wider">Set Custom Time / Date</label>
+                        
+                        <!-- Date Input -->
+                        <div>
+                            <input type="date" id="input-date-lijah" onchange="handleInputChange('lijah')" 
+                                class="w-full bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition">
+                        </div>
+
+                        <!-- Time Selector Group -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <!-- Hours -->
+                            <select id="input-hour-lijah" onchange="handleInputChange('lijah')" 
+                                class="bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl px-2 py-2 text-sm text-center font-mono focus:outline-none focus:border-purple-500">
+                            </select>
+                            
+                            <!-- Minutes -->
+                            <select id="input-min-lijah" onchange="handleInputChange('lijah')" 
+                                class="bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl px-2 py-2 text-sm text-center font-mono focus:outline-none focus:border-purple-500">
+                            </select>
+
+                            <!-- AM/PM -->
+                            <select id="input-ampm-lijah" onchange="handleInputChange('lijah')" 
+                                class="bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl px-2 py-2 text-sm text-center font-semibold text-purple-400 focus:outline-none focus:border-purple-500">
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                        </div>
+
+                        <!-- Quick Increment Chips -->
+                        <div class="flex items-center justify-between gap-1 pt-1">
+                            <button onclick="adjustTime('lijah', -60)" class="flex-1 py-1 px-1.5 text-xs font-mono bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-lg transition">-1h</button>
+                            <button onclick="adjustTime('lijah', -15)" class="flex-1 py-1 px-1.5 text-xs font-mono bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-lg transition">-15m</button>
+                            <button onclick="adjustTime('lijah', 15)" class="flex-1 py-1 px-1.5 text-xs font-mono bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-lg transition">+15m</button>
+                            <button onclick="adjustTime('lijah', 60)" class="flex-1 py-1 px-1.5 text-xs font-mono bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-lg transition">+1h</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Copyable Field Section -->
+                <div class="mt-6 pt-4 border-t border-slate-800/80">
+                    <label class="block text-xs font-medium text-slate-400 mb-1.5">Formatted Output String:</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" readonly id="copy-preview-lijah" value="4:00 pm (Lijah and others' Time)"
+                            class="w-full bg-slate-950/80 text-purple-300 font-mono text-sm px-3 py-2 rounded-xl border border-slate-800 select-all focus:outline-none">
+                        <button onclick="copySingleBox('lijah')" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5 shrink-0 shadow-lg shadow-purple-600/20 transition active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARD 3: Proxy time -->
+            <div class="glass-card rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 relative overflow-hidden group border-t-2 border-t-emerald-500/80">
+                <div class="absolute -right-12 -top-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all pointer-events-none"></div>
+
+                <div>
+                    <!-- Card Top Header -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-emerald-400"></span>
+                            <h2 class="text-xl font-bold text-white tracking-wide">Proxy time</h2>
+                        </div>
+                        <span id="offset-proxy" class="text-xs font-mono px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                            IST
+                        </span>
+                    </div>
+
+                    <!-- Primary Clock Display -->
+                    <div class="my-4 text-center py-4 bg-slate-950/40 rounded-xl border border-slate-800/80">
+                        <div id="display-time-proxy" class="text-4xl sm:text-5xl font-extrabold font-mono text-white tracking-tight">
+                            00:00:00 <span class="text-xl text-emerald-400 font-sans">AM</span>
+                        </div>
+                        <div id="display-date-proxy" class="text-xs sm:text-sm text-slate-400 font-medium mt-1">
+                            Loading date...
+                        </div>
+                    </div>
+
+                    <!-- Interactive Converter Controls -->
+                    <div class="space-y-3 mt-6">
+                        <label class="block text-xs font-semibold uppercase text-slate-400 tracking-wider">Set Custom Time / Date</label>
+                        
+                        <!-- Date Input -->
+                        <div>
+                            <input type="date" id="input-date-proxy" onchange="handleInputChange('proxy')" 
+                                class="w-full bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition">
+                        </div>
+
+                        <!-- Time Selector Group -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <!-- Hours -->
+                            <select id="input-hour-proxy" onchange="handleInputChange('proxy')" 
+                                class="bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl px-2 py-2 text-sm text-center font-mono focus:outline-none focus:border-emerald-500">
+                            </select>
+                            
+                            <!-- Minutes -->
+                            <select id="input-min-proxy" onchange="handleInputChange('proxy')" 
+                                class="bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl px-2 py-2 text-sm text-center font-mono focus:outline-none focus:border-emerald-500">
+                            </select>
+
+                            <!-- AM/PM -->
+                            <select id="input-ampm-proxy" onchange="handleInputChange('proxy')" 
+                                class="bg-slate-900/90 text-slate-200 border border-slate-700/80 rounded-xl px-2 py-2 text-sm text-center font-semibold text-emerald-400 focus:outline-none focus:border-emerald-500">
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                        </div>
+
+                        <!-- Quick Increment Chips -->
+                        <div class="flex items-center justify-between gap-1 pt-1">
+                            <button onclick="adjustTime('proxy', -60)" class="flex-1 py-1 px-1.5 text-xs font-mono bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-lg transition">-1h</button>
+                            <button onclick="adjustTime('proxy', -15)" class="flex-1 py-1 px-1.5 text-xs font-mono bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-lg transition">-15m</button>
+                            <button onclick="adjustTime('proxy', 15)" class="flex-1 py-1 px-1.5 text-xs font-mono bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-lg transition">+15m</button>
+                            <button onclick="adjustTime('proxy', 60)" class="flex-1 py-1 px-1.5 text-xs font-mono bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-lg transition">+1h</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Copyable Field Section -->
+                <div class="mt-6 pt-4 border-t border-slate-800/80">
+                    <label class="block text-xs font-medium text-slate-400 mb-1.5">Formatted Output String:</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" readonly id="copy-preview-proxy" value="4:00 pm (Proxy time)"
+                            class="w-full bg-slate-950/80 text-emerald-300 font-mono text-sm px-3 py-2 rounded-xl border border-slate-800 select-all focus:outline-none">
+                        <button onclick="copySingleBox('proxy')" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5 shrink-0 shadow-lg shadow-emerald-600/20 transition active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Combined Share Section -->
+        <div class="mt-8 glass-card rounded-2xl p-6 border-slate-800">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                        Multi-Zone Share Block
+                    </h3>
+                    <p class="text-xs text-slate-400">Copy all 3 converted times at once to easily post in Discord, Slack, or WhatsApp</p>
+                </div>
+                <button onclick="copyAllTimes()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 rounded-xl text-sm font-semibold flex items-center gap-2 transition active:scale-95">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <span>Copy Snippet</span>
+                </button>
+            </div>
+            
+            <textarea id="bulkCopyArea" readonly rows="3" 
+                class="w-full bg-slate-950/80 text-slate-300 font-mono text-xs sm:text-sm p-3.5 rounded-xl border border-slate-800 select-all focus:outline-none resize-none leading-relaxed"></textarea>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-12 text-center text-xs text-slate-500 border-t border-slate-900 pt-6">
+        <p>Dynamic Multi-Timezone Converter & Live Sync Tool</p>
+    </footer>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // Configuration for the 3 specific time zones
+        const ZONES = {
+            eu: {
+                key: 'eu',
+                title: 'EU time',
+                timeZone: 'Europe/London'
+            },
+            lijah: {
+                key: 'lijah',
+                title: "Lijah and others' Time",
+                timeZone: 'America/New_York'
+            },
+            proxy: {
+                key: 'proxy',
+                title: 'Proxy time',
+                timeZone: 'Asia/Kolkata'
+            }
+        };
+
+        // Application State
+        let state = {
+            utcTimestamp: Date.now(), // Central epoch timestamp driving all 3 boxes
+            isLive: true,
+            includeDate: false,
+            lowercaseAmPm: true,
+            isUserInteracting: false
+        };
+
+        let liveTimer = null;
+
+        // Populate Hour and Minute Select dropdowns
+        function initDropdowns() {
+            Object.keys(ZONES).forEach(key => {
+                const hourSelect = document.getElementById(`input-hour-${key}`);
+                const minSelect = document.getElementById(`input-min-${key}`);
+
+                // 1 to 12 Hours
+                hourSelect.innerHTML = '';
+                for (let h = 1; h <= 12; h++) {
+                    const val = h.toString().padStart(2, '0');
+                    const opt = document.createElement('option');
+                    opt.value = h;
+                    opt.textContent = val;
+                    hourSelect.appendChild(opt);
+                }
+
+                // 00 to 59 Minutes
+                minSelect.innerHTML = '';
+                for (let m = 0; m < 60; m++) {
+                    const val = m.toString().padStart(2, '0');
+                    const opt = document.createElement('option');
+                    opt.value = m;
+                    opt.textContent = val;
+                    minSelect.appendChild(opt);
+                }
+            });
+        }
+
+        // Convert UTC epoch timestamp to zoned parts for a target IANA timezone
+        function getZonedParts(timestamp, timeZone) {
+            const date = new Date(timestamp);
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true,
+                timeZoneName: 'short'
+            });
+
+            const parts = formatter.formatToParts(date);
+            const map = {};
+            parts.forEach(p => map[p.type] = p.value);
+
+            // Handle year, month, day format YYYY-MM-DD for standard HTML date input
+            const year = map.year;
+            const month = map.month;
+            const day = map.day;
+            const isoDate = `${year}-${month}-${day}`;
+
+            return {
+                year: parseInt(year, 10),
+                month: parseInt(month, 10),
+                day: parseInt(day, 10),
+                isoDate,
+                hour12: parseInt(map.hour, 10),
+                minute: parseInt(map.minute, 10),
+                second: map.second,
+                dayPeriod: map.dayPeriod ? map.dayPeriod.toUpperCase() : 'AM',
+                timeZoneName: map.timeZoneName || ''
+            };
+        }
+
+        // Converts user-selected local time in target timezone back into UTC epoch ms
+        function getUtcFromZonedParts(timeZone, year, month, day, hour12, minute, ampm) {
+            let hour24 = hour12;
+            if (ampm === 'PM' && hour12 < 12) hour24 += 12;
+            if (ampm === 'AM' && hour12 === 12) hour24 = 0;
+
+            // Approximate candidate in UTC
+            const utcCandidate = new Date(Date.UTC(year, month - 1, day, hour24, minute, 0));
+
+            // Format candidate date in the target timezone to find discrepancy
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone,
+                year: 'numeric', month: 'numeric', day: 'numeric',
+                hour: 'numeric', minute: 'numeric', second: 'numeric',
+                hour12: false
+            });
+
+            const parts = formatter.formatToParts(utcCandidate);
+            const map = {};
+            parts.forEach(p => map[p.type] = p.value);
+
+            let zonedHour = parseInt(map.hour, 10);
+            if (zonedHour === 24) zonedHour = 0;
+
+            const zonedUTC = Date.UTC(
+                parseInt(map.year, 10),
+                parseInt(map.month, 10) - 1,
+                parseInt(map.day, 10),
+                zonedHour,
+                parseInt(map.minute, 10)
+            );
+
+            const targetUTC = Date.UTC(year, month - 1, day, hour24, minute);
+            const diffMs = zonedUTC - targetUTC;
+
+            return utcCandidate.getTime() - diffMs;
+        }
+
+        // Main function to update UI for all 3 boxes based on state.utcTimestamp
+        function renderAll() {
+            const bulkLines = [];
+
+            Object.keys(ZONES).forEach(key => {
+                const zoneObj = ZONES[key];
+                const parts = getZonedParts(state.utcTimestamp, zoneObj.timeZone);
+
+                // Format Time Display (e.g. 04:00:12 PM)
+                const formattedHour = parts.hour12.toString().padStart(2, '0');
+                const formattedMin = parts.minute.toString().padStart(2, '0');
+                
+                const timeHtml = `${formattedHour}:${formattedMin}:${parts.second} <span class="${
+                    key === 'eu' ? 'text-sky-400' : key === 'lijah' ? 'text-purple-400' : 'text-emerald-400'
+                } font-sans">${parts.dayPeriod}</span>`;
+
+                document.getElementById(`display-time-${key}`).innerHTML = timeHtml;
+
+                // Format Date Display
+                const dateObj = new Date(state.utcTimestamp);
+                const fullDateStr = new Intl.DateTimeFormat('en-US', {
+                    timeZone: zoneObj.timeZone,
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                }).format(dateObj);
+
+                document.getElementById(`display-date-${key}`).textContent = fullDateStr;
+                document.getElementById(`offset-${key}`).textContent = parts.timeZoneName;
+
+                // Sync Input Controls (only if user is not actively typing inside the target element)
+                if (!state.isUserInteracting) {
+                    document.getElementById(`input-date-${key}`).value = parts.isoDate;
+                    document.getElementById(`input-hour-${key}`).value = parts.hour12;
+                    document.getElementById(`input-min-${key}`).value = parts.minute;
+                    document.getElementById(`input-ampm-${key}`).value = parts.dayPeriod;
+                }
+
+                // Construct Copyable Text
+                // Format requirement: "4:00 pm (EU time)"
+                let periodStr = parts.dayPeriod;
+                if (state.lowercaseAmPm) {
+                    periodStr = periodStr.toLowerCase();
+                }
+
+                let copyText = `${parts.hour12}:${formattedMin} ${periodStr} (${zoneObj.title})`;
+
+                if (state.includeDate) {
+                    const shortDate = new Intl.DateTimeFormat('en-US', {
+                        timeZone: zoneObj.timeZone,
+                        month: 'short',
+                        day: 'numeric'
+                    }).format(dateObj);
+                    copyText = `${shortDate}, ${parts.hour12}:${formattedMin} ${periodStr} (${zoneObj.title})`;
+                }
+
+                document.getElementById(`copy-preview-${key}`).value = copyText;
+                bulkLines.push(copyText);
+            });
+
+            // Update Multi-zone Bulk Output Box
+            document.getElementById('bulkCopyArea').value = bulkLines.join('\n');
+        }
+
+        // User edits time/date in any box
+        function handleInputChange(changedKey) {
+            // Pause live tick mode when user edits
+            if (state.isLive) {
+                setLiveSync(false);
+            }
+
+            state.isUserInteracting = true;
+
+            const dateVal = document.getElementById(`input-date-${changedKey}`).value;
+            const hour12 = parseInt(document.getElementById(`input-hour-${changedKey}`).value, 10);
+            const min = parseInt(document.getElementById(`input-min-${changedKey}`).value, 10);
+            const ampm = document.getElementById(`input-ampm-${changedKey}`).value;
+
+            if (!dateVal) return;
+
+            const [yearStr, monthStr, dayStr] = dateVal.split('-');
+            const year = parseInt(yearStr, 10);
+            const month = parseInt(monthStr, 10);
+            const day = parseInt(dayStr, 10);
+
+            // Compute new UTC timestamp from the changed box
+            const newUtc = getUtcFromZonedParts(ZONES[changedKey].timeZone, year, month, day, hour12, min, ampm);
+            state.utcTimestamp = newUtc;
+
+            renderAll();
+            state.isUserInteracting = false;
+        }
+
+        // Quick adjustment (+15m, -15m, +1h, -1h)
+        function adjustTime(key, minutesToAdd) {
+            if (state.isLive) {
+                setLiveSync(false);
+            }
+            state.utcTimestamp += minutesToAdd * 60 * 1000;
+            renderAll();
+            showToast(`Adjusted ${minutesToAdd > 0 ? '+' : ''}${minutesToAdd} mins`);
+        }
+
+        // Toggle Live Sync Mode
+        function setLiveSync(enable) {
+            state.isLive = enable;
+            const btn = document.getElementById('liveToggleBtn');
+            const dot = document.getElementById('liveIndicatorDot');
+            const text = document.getElementById('liveToggleText');
+
+            if (enable) {
+                btn.className = "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20";
+                dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-live";
+                text.textContent = "Live Clock Active";
+                state.utcTimestamp = Date.now();
+                renderAll();
+            } else {
+                btn.className = "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20";
+                dot.className = "w-2.5 h-2.5 rounded-full bg-amber-400";
+                text.textContent = "Custom Time (Paused)";
+            }
+        }
+
+        function toggleLiveSync() {
+            setLiveSync(!state.isLive);
+        }
+
+        function resetToNow() {
+            state.utcTimestamp = Date.now();
+            setLiveSync(true);
+            showToast("Reset to current time");
+        }
+
+        function toggleIncludeDate(checked) {
+            state.includeDate = checked;
+            renderAll();
+        }
+
+        function toggleLowercaseAmPm(checked) {
+            state.lowercaseAmPm = checked;
+            renderAll();
+        }
+
+        // Robust Copy to Clipboard using document.execCommand fallback
+        function copyTextToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            let success = false;
+            try {
+                success = document.execCommand('copy');
+            } catch (err) {
+                console.error("Failed to copy", err);
+            }
+            document.body.removeChild(textarea);
+            return success;
+        }
+
+        function copySingleBox(key) {
+            const inputVal = document.getElementById(`copy-preview-${key}`).value;
+            const ok = copyTextToClipboard(inputVal);
+            if (ok) {
+                showToast(`Copied: "${inputVal}"`);
+            } else {
+                showToast("Failed to copy text", true);
+            }
+        }
+
+        function copyAllTimes() {
+            const bulkVal = document.getElementById('bulkCopyArea').value;
+            const ok = copyTextToClipboard(bulkVal);
+            if (ok) {
+                showToast("Copied all 3 converted times!");
+            } else {
+                showToast("Failed to copy text", true);
+            }
+        }
+
+        // Toast Notification Generator
+        function showToast(message, isError = false) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            toast.className = `pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-xl shadow-2xl text-xs font-medium border backdrop-blur-md transition-all duration-300 transform translate-y-2 opacity-0 ${
+                isError 
+                    ? 'bg-red-950/90 text-red-200 border-red-800' 
+                    : 'bg-slate-900/95 text-emerald-300 border-emerald-500/40'
+            }`;
+
+            toast.innerHTML = `
+                <svg class="w-4 h-4 shrink-0 ${isError ? 'text-red-400' : 'text-emerald-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${isError ? 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' : 'M5 13l4 4L19 7'}"/>
+                </svg>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            // Animate In
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // App Initialization
+        window.onload = function() {
+            initDropdowns();
+            renderAll();
+
+            // Clock Loop every 1000ms
+            liveTimer = setInterval(() => {
+                if (state.isLive) {
+                    state.utcTimestamp = Date.now();
+                    renderAll();
+                }
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
